@@ -20,6 +20,8 @@
  * DEALINGS IN THE SOFTWARE.
  */
 
+import haxe.Constraints;
+
 /**
 	The `Lambda` class is a collection of methods to support functional
 	programming. It is ideally used with 'using Lambda' and then acts as an
@@ -39,7 +41,7 @@ class Lambda {
 		
 		If `it` is an Array, this function returns a copy of it.
 	**/
-	public static function array<A>( it : Iterable<A> ) : Array<A> {
+	public static function array<A>( it : LambdaSubject<A> ) : Array<A> {
 		var a = new Array<A>();
 		for(i in it)
 			a.push(i);
@@ -51,7 +53,7 @@ class Lambda {
 		
 		If `it` is a List, this function returns a copy of it.
 	**/
-	public static function list<A>( it : Iterable<A> ) : List<A> {
+	public static function list<A>( it : LambdaSubject<A> ) : List<A> {
 		var l = new List<A>();
 		for(i in it)
 			l.add(i);
@@ -65,7 +67,7 @@ class Lambda {
 		
 		If `f` is null, the result is unspecified.
 	**/
-	public static function map<A,B>( it : Iterable<A>, f : A -> B ) : List<B> {
+	public static function map<A,B>( it : LambdaSubject<A>, f : A -> B ) : List<B> {
 		var l = new List<B>();
 		for( x in it )
 			l.add(f(x));
@@ -79,7 +81,7 @@ class Lambda {
 		
 		If `f` is null, the result is unspecified.
 	**/
-	public static function mapi<A,B>( it : Iterable<A>, f : Int -> A -> B ) : List<B> {
+	public static function mapi<A,B>( it : LambdaSubject<A>, f : Int -> A -> B ) : List<B> {
 		var l = new List<B>();
 		var i = 0;
 		for( x in it )
@@ -95,7 +97,7 @@ class Lambda {
 		
 		If no such element is found, the result is false.
 	**/
-	public static function has<A>( it : Iterable<A>, elt : A ) : Bool {
+	public static function has<A>( it : LambdaSubject<A>, elt : A ) : Bool {
 		for( x in it )
 			if( x == elt )
 				return true;
@@ -112,7 +114,7 @@ class Lambda {
 		
 		If `f` is null, the result is unspecified.
 	**/
-	public static function exists<A>( it : Iterable<A>, f : A -> Bool ) {
+	public static function exists<A>( it : LambdaSubject<A>, f : A -> Bool ) {
 		for( x in it )
 			if( f(x) )
 				return true;
@@ -131,7 +133,7 @@ class Lambda {
 		
 		If `f` is null, the result is unspecified.
 	**/
-	public static function foreach<A>( it : Iterable<A>, f : A -> Bool ) {
+	public static function foreach<A>( it : LambdaSubject<A>, f : A -> Bool ) {
 		for( x in it )
 			if( !f(x) )
 				return false;
@@ -143,7 +145,7 @@ class Lambda {
 		
 		If `f` is null, the result is unspecified.
 	**/
-	public static function iter<A>( it : Iterable<A>, f : A -> Void ) {
+	public static function iter<A>( it : LambdaSubject<A>, f : A -> Void ) {
 		for( x in it )
 			f(x);
 	}
@@ -156,7 +158,7 @@ class Lambda {
 		
 		Otherwise if `f` is null, the result is unspecified.
 	**/
-	public static function filter<A>( it : Iterable<A>, f : A -> Bool ) {
+	public static function filter<A>( it : LambdaSubject<A>, f : A -> Bool ) {
 		var l = new List<A>();
 		for( x in it )
 			if( f(x) )
@@ -176,7 +178,7 @@ class Lambda {
 		
 		If `it` or `f` are null, the result is unspecified.
 	**/
-	public static function fold<A,B>( it : Iterable<A>, f : A -> B -> B, first : B ) : B {
+	public static function fold<A,B>( it : LambdaSubject<A>, f : A -> B -> B, first : B ) : B {
 		for( x in it )
 			first = f(x,first);
 		return first;
@@ -188,7 +190,7 @@ class Lambda {
 		
 		This function traverses all elements.
 	**/
-	public static function count<A>( it : Iterable<A>, ?pred : A -> Bool ) {
+	public static function count<A>( it : LambdaSubject<A>, ?pred : A -> Bool ) {
 		var n = 0;
 		if( pred == null )
 			for( _ in it )
@@ -203,7 +205,7 @@ class Lambda {
 	/**
 		Tells if Iterable `it` does not contain any element.
 	**/
-	public static function empty<T>( it : Iterable<T> ) : Bool {
+	public static function empty<T>( it : LambdaSubject<T> ) : Bool {
 		return !it.iterator().hasNext();
 	}
 
@@ -214,7 +216,7 @@ class Lambda {
 		
 		If `v` does not exist in `it`, the result is -1.
 	**/
-	public static function indexOf<T>( it : Iterable<T>, v : T ) : Int {
+	public static function indexOf<T>( it : LambdaSubject<T>, v : T ) : Int {
 		var i = 0;
 		for( v2 in it ) {
 			if( v == v2 )
@@ -230,7 +232,7 @@ class Lambda {
 		
 		If `a` or `b` are null, the result is unspecified.
 	**/
-	public static function concat<T>( a : Iterable<T>, b : Iterable<T> ) : List<T> {
+	public static function concat<T>( a : LambdaSubject<T>, b : LambdaSubject<T> ) : List<T> {
 		var l = new List();
 		for( x in a )
 			l.add(x);

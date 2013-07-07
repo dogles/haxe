@@ -390,7 +390,7 @@ let rec type_inline ctx cf f ethis params tret config p force =
 				| _ -> try
 					type_eq EqStrict etype tret;
 					e
-				with Unify_error _ when (match ctx.com.platform with Cpp -> true | Flash when Common.defined ctx.com Define.As3 -> true | _ -> false) ->
+				with Unify_error _ when not (has_mono tret) && (match ctx.com.platform with Cpp -> true | Flash when Common.defined ctx.com Define.As3 -> true | _ -> false) ->
 					(* try to detect upcasts: in that case we may use a safe cast *)
 					Type.unify tret etype;
 					let ct = match follow tret with

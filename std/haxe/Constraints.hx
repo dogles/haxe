@@ -35,3 +35,25 @@ abstract Or<L,R>(Dynamic) from L to L from R to R { }
 	The types allowed as key to `haxe.ds.ObjectMap`.
 **/
 extern typedef ObjectMapKey = Or<Class<Dynamic>, {}>;
+
+/**
+    This type allows using either `Iterable` or `Iterator`.
+
+    Types in the standard library that are an `Iterable` include `Array` and
+	`List`.
+
+    An `Iterator` can be obtained from methods of several types, such as
+	`Map.iterator` or `Map.keys`.
+**/
+abstract LambdaSubject<T>(Iterator<T>) from Iterator<T> to Iterator<T> {
+	inline function new(it:Iterator<T>)
+		this = it;
+
+	public inline function iterator() {
+		return this;
+	}
+	
+	@:from static public inline function fromIterable(it:Iterable<T>) {
+		return new LambdaSubject(it.iterator());
+	}
+}
