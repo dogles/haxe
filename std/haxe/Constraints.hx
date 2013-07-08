@@ -61,15 +61,15 @@ extern typedef ObjectMapKey = Or<Class<Dynamic>, {}>;
     An `Iterator` can be obtained from methods of several types, such as
 	`Map.iterator` or `Map.keys`.
 **/
-abstract LambdaSubject<T>(Iterator<T>) from Iterator<T> to Iterator<T> {
-	inline function new(it:Iterator<T>)
+abstract LambdaSubject<T>(Iterable<T>)  {
+	inline function new(it:Iterable<T>)
 		this = it;
 
 	public inline function iterator() {
-		return this;
+		return this.iterator();
 	}
 	
-	@:from static public inline function fromIterable(it:Iterable<T>) {
-		return new LambdaSubject(it.iterator());
+	@:from static public inline function fromIterator(it:Iterator<T>) {
+		return new LambdaSubject({iterator:function() return it});
 	}
 }
