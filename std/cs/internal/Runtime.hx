@@ -448,7 +448,7 @@ import cs.system.Type;
 					{
 						var param = params[i].ParameterType;
 						var strParam = param + "";
-						if (param.IsAssignableFrom(ts[i]))
+						if (param.IsAssignableFrom(ts[i]) || (ts[i] == null && !param.IsValueType))
 						{
 							//if it is directly assignable, we'll give it top rate
 							continue;
