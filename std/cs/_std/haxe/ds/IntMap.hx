@@ -285,30 +285,9 @@ import cs.NativeArray;
 		Returns an iterator of all keys in the hashtable.
 		Implementation detail: Do not set() any new value while iterating, as it may cause a resize, which will break iteration
 	**/
-	public function keys() : Iterator<Int>
-	{
-		var i = 0;
-		var len = nBuckets;
-		return {
-			hasNext: function() {
-				for (j in i...len)
-				{
-					if (!isEither(flags, j))
-					{
-						i = j;
-						return true;
-					}
-				}
-				return false;
-			},
-			next: function() {
-				var ret = _keys[i];
-
-				i = i + 1;
-				return ret;
-			}
-		};
-	}
+	public function keys() : Iterator<Int> {
+    return new IntMapKeyIterator(this);
+  }
 
 	/**
 		Returns an iterator of all values in the hashtable.
@@ -410,3 +389,34 @@ import cs.NativeArray;
 	private static inline function flagsSize(m:Int):Int
 		return ((m) < 16? 1 : (m) >> 4);
 }
+
+@:access(haxe.ds.IntMap)
+private class IntMapKeyIterator<T> {
+  var i : Int;
+  var len : Int;
+  var map : IntMap<T>;
+  public inline function new(map:IntMap<T>) {
+    this.map = map;
+    this.i = 0;
+    this.len = map.nBuckets;
+  }
+
+	public inline function hasNext() {
+    var ret = false;
+    for (j in i...len)
+    {
+      if (!IntMap.isEither(map.flags, j))
+      {
+        i = j;
+        ret = true;
+        break;
+      }
+    }
+    return ret;
+  }
+
+  public inline function next() {
+	  return map._keys[i++];
+  }
+}
+

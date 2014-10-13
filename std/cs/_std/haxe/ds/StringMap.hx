@@ -310,27 +310,7 @@ import cs.NativeArray;
 	**/
 	public function keys() : Iterator<String>
 	{
-		var i = 0;
-		var len = nBuckets;
-		return {
-			hasNext: function() {
-				for (j in i...len)
-				{
-					if (!isEither(hashes[j]))
-					{
-						i = j;
-						return true;
-					}
-				}
-				return false;
-			},
-			next: function() {
-				var ret = _keys[i];
-
-				i = i + 1;
-				return ret;
-			}
-		};
+    return new StringMapKeyIterator(this);
 	}
 
 	/**
@@ -441,6 +421,36 @@ import cs.NativeArray;
 		if (!x) throw "assert failed";
 #end
 	}
+}
+
+@:access(haxe.ds.StringMap)
+private class StringMapKeyIterator<T> {
+  var i : Int;
+  var len : Int;
+  var map : StringMap<T>;
+  public inline function new(map:StringMap<T>) {
+    this.map = map;
+    this.i = 0;
+    this.len = map.nBuckets;
+  }
+
+  public inline function hasNext() {
+    var ret = false;
+    for (j in i...len)
+    {
+      if (!StringMap.isEither(map.hashes[j]))
+      {
+        i = j;
+        ret = true;
+        break;
+      }
+    }
+    return ret;
+  }
+
+  public inline function next() {
+    return map._keys[i++];
+  }
 }
 
 private typedef HashType = Int;

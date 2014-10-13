@@ -305,30 +305,9 @@ import cs.NativeArray;
 		Returns an iterator of all keys in the hashtable.
 		Implementation detail: Do not set() any new value while iterating, as it may cause a resize, which will break iteration
 	**/
-	public function keys() : Iterator<K>
-	{
-		var i = 0;
-		var len = nBuckets;
-		return {
-			hasNext: function() {
-				for (j in i...len)
-				{
-					if (!isEither(hashes[j]))
-					{
-						i = j;
-						return true;
-					}
-				}
-				return false;
-			},
-			next: function() {
-				var ret = _keys[i];
-
-				i = i + 1;
-				return ret;
-			}
-		};
-	}
+	public function keys() : Iterator<K> {
+    return new ObjectMapKeyIterator(this);
+  }
 
 	/**
 		Returns an iterator of all values in the hashtable.
@@ -438,6 +417,36 @@ import cs.NativeArray;
 		if (!x) throw "assert failed";
 #end
 	}
+}
+
+@:access(haxe.ds.ObjectMap)
+private class ObjectMapKeyIterator<K:{},V> {
+  var i : Int;
+  var len : Int;
+  var map : ObjectMap<K,V>;
+  public inline function new(map:ObjectMap<K,V>) {
+    this.map = map;
+    this.i = 0;
+    this.len = map.nBuckets;
+  }
+
+  public inline function hasNext() {
+    var ret = false;
+    for (j in i...len)
+    {
+      if (!ObjectMap.isEither(map.hashes[j]))
+      {
+        i = j;
+        ret = true;
+        break;
+      }
+    }
+    return ret;
+  }
+
+  public inline function next() {
+    return map._keys[i++];
+  }
 }
 
 private typedef HashType = Int;
