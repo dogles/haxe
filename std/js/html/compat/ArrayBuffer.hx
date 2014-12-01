@@ -19,8 +19,36 @@
  * FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
  * DEALINGS IN THE SOFTWARE.
  */
+package js.html.compat;
 
-// This file is generated, do not edit!
-package js.html;
+@:keep
+class ArrayBuffer {
 
-typedef RequestAnimationFrameCallback = Float -> Void;
+	public var byteLength : Int;
+	var a : Array<Dynamic>;
+	
+	public function new( ?a : Dynamic ) {
+		if( Std.is(a,Array) ) {
+			this.a = a;
+			byteLength = a.length;
+		} else
+			throw "TODO";
+	}
+	
+	public function slice(begin,?end) {
+		return new ArrayBuffer(a.slice(begin,end));
+	}
+	
+	static function sliceImpl(begin,?end) {
+		var u = new js.html.Uint8Array(untyped __js__('this'), begin, end == null ? null : end - begin);
+        var result = new js.html.ArrayBuffer(u.byteLength);
+        var resultArray = new js.html.Uint8Array(result);
+		resultArray.set(u);
+        return result;
+	}
+
+	static function __init__() untyped {
+		var ArrayBuffer = __js__('typeof(window) != "undefined" && window.ArrayBuffer') || ArrayBuffer;
+		if( ArrayBuffer.prototype.slice == null ) ArrayBuffer.prototype.slice = sliceImpl; // IE10
+	}
+}

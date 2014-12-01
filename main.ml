@@ -1170,6 +1170,7 @@ try
 			xml_out := Some "hx"
 		),": generate hx headers for all input classes");
 		("--next", Arg.Unit (fun() -> assert false), ": separate several haxe compilations");
+		("--each", Arg.Unit (fun() -> assert false), ": append preceding parameters to all haxe compilations separated by --next");
 		("--display", Arg.String (fun file_pos ->
 			match file_pos with
 			| "classes" ->
@@ -1194,6 +1195,9 @@ try
 					| "usage" ->
 						activate_special_display_mode();
 						DMUsage
+					| "type" ->
+						activate_special_display_mode();
+						DMType
 					| "toplevel" ->
 						activate_special_display_mode();
 						DMToplevel
@@ -1460,7 +1464,7 @@ try
 		t();
 		if ctx.has_error then raise Abort;
 		begin match com.display with
-			| DMNone | DMUsage | DMPosition | DMResolve _ ->
+			| DMNone | DMUsage | DMPosition | DMType | DMResolve _ ->
 				()
 			| _ ->
 				if ctx.has_next then raise Abort;

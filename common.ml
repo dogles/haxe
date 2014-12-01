@@ -107,6 +107,7 @@ type display_mode =
 	| DMPosition
 	| DMToplevel
 	| DMResolve of string
+	| DMType
 
 type context = {
 	(* config *)
@@ -195,6 +196,7 @@ module Define = struct
 		| JsClassic
 		| JsEs5
 		| JsFlatten
+		| KeepOldOutput
 		| Macro
 		| MacroTimes
 		| NekoSource
@@ -272,6 +274,7 @@ module Define = struct
 		| JsClassic -> ("js_classic","Don't use a function wrapper and strict mode in JS output")
 		| JsEs5 -> ("js_es5","Generate JS for ES5-compliant runtimes")
 		| JsFlatten -> ("js_flatten","Generate classes to use fewer object property lookups")
+		| KeepOldOutput -> ("keep_old_output","Keep old source files in the output directory (for C#/Java)")
 		| Macro -> ("macro","Defined when we compile code in the macro context")
 		| MacroTimes -> ("macro_times","Display per-macro timing when used with --times")
 		| NetVer -> ("net_ver", "<version:20-45> Sets the .NET version to be targeted")
@@ -444,6 +447,7 @@ module MetaInfo = struct
 		| Rtti -> ":rtti",("Adds runtime type informations",[UsedOn TClass])
 		| Runtime -> ":runtime",("?",[])
 		| RuntimeValue -> ":runtimeValue",("Marks an abstract as being a runtime value",[UsedOn TAbstract])
+		| SelfCall -> ":selfCall",("Translates method calls into calling object directly",[UsedOn TClassField; Platform Js])
 		| Setter -> ":setter",("Generates a native getter function on the given field",[HasParam "Class field name";UsedOn TClassField;Platform Flash])
 		| SkipCtor -> ":skipCtor",("Used internally to generate a constructor as if it were a native type (no __hx_ctor)",[Platforms [Java;Cs]; Internal])
 		| SkipReflection -> ":skipReflection",("Used internally to annotate a field that shouldn't have its reflection data generated",[Platforms [Java;Cs]; UsedOn TClassField; Internal])

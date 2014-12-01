@@ -518,6 +518,8 @@ and gen_expr ctx e =
 		print ctx "[%i]" (i + 2)
 	| TField ({ eexpr = TConst (TInt _ | TFloat _) } as x,f) ->
 		gen_expr ctx { e with eexpr = TField(mk (TParenthesis x) x.etype x.epos,f) }
+	| TField (x, (FInstance(_,_,f) | FStatic(_,f) | FAnon(f))) when Meta.has Meta.SelfCall f.cf_meta ->
+		gen_value ctx x;
 	| TField (x,f) ->
 		gen_value ctx x;
 		let name = field_name f in
