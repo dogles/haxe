@@ -23,7 +23,7 @@ package haxe.ds;
 
 import cs.NativeArray;
 
-@:coreApi class ObjectMap<K:{}, V> implements Map.IMap<K,V>
+@:coreApi class ObjectMap<K:{}, V> implements haxe.Constraints.IMap<K,V>
 {
 	@:extern private static inline var HASH_UPPER = 0.77;
 	@:extern private static inline var FLAG_EMPTY = 0;
@@ -46,6 +46,11 @@ import cs.NativeArray;
 	private var nOccupied:Int;
 	private var upperBound:Int;
 
+#if !no_map_cache
+	private var cachedKey:K;
+	private var cachedIndex:Int;
+#end
+
 #if DEBUG_HASHTBL
 	private var totalProbes:Int;
 	private var probeTimes:Int;
@@ -55,6 +60,9 @@ import cs.NativeArray;
 
 	public function new() : Void
 	{
+#if !no_map_cache
+		cachedIndex = -1;
+#end
 	}
 
 	public function set( key : K, value : V ) : Void
@@ -117,6 +125,11 @@ import cs.NativeArray;
 			assert(_keys[x] == key);
 			vals[x] = value;
 		}
+
+#if !no_map_cache
+		cachedIndex = x;
+		cachedKey = key;
+#end
 	}
 
 	@:final private function lookup( key : K ) : Int
@@ -181,6 +194,11 @@ import cs.NativeArray;
 
 		if (j != 0)
 		{ //rehashing is required
+#if !no_map_cache
+			//resetting cache
+			cachedKey = null;
+			cachedIndex = -1;
+#end
 
 			j = -1;
 			var nBuckets = nBuckets, _keys = _keys, vals = vals, hashes = hashes;
@@ -253,10 +271,21 @@ import cs.NativeArray;
 	public function get( key : K ) : Null<V>
 	{
 		var idx = -1;
+#if !no_map_cache
+		if (cachedKey == key && ( (idx = cachedIndex) != -1 ))
+		{
+			return vals[idx];
+		}
+#end
 
 		idx = lookup(key);
 		if (idx != -1)
 		{
+#if !no_map_cache
+			cachedKey = key;
+			cachedIndex = idx;
+#end
+
 			return vals[idx];
 		}
 
@@ -265,9 +294,22 @@ import cs.NativeArray;
 
 	private function getDefault( key : K, def : V ) : V
 	{
-		var idx = lookup(key);
+		var idx = -1;
+#if !no_map_cache
+		if (cachedKey == key && ( (idx = cachedIndex) != -1 ))
+		{
+			return vals[idx];
+		}
+#end
+
+		idx = lookup(key);
 		if (idx != -1)
 		{
+#if !no_map_cache
+			cachedKey = key;
+			cachedIndex = idx;
+#end
+
 			return vals[idx];
 		}
 
@@ -276,9 +318,22 @@ import cs.NativeArray;
 
 	public function exists( key : K ) : Bool
 	{
-		var idx = lookup(key);
+		var idx = -1;
+#if !no_map_cache
+		if (cachedKey == key && ( (idx = cachedIndex) != -1 ))
+		{
+			return true;
+		}
+#end
+
+		idx = lookup(key);
 		if (idx != -1)
 		{
+#if !no_map_cache
+			cachedKey = key;
+			cachedIndex = idx;
+#end
+
 			return true;
 		}
 
@@ -287,11 +342,23 @@ import cs.NativeArray;
 
 	public function remove( key : K ) : Bool
 	{
-		var idx = lookup(key);
+		var idx = -1;
+#if !no_map_cache
+		if (! (cachedKey == key && ( (idx = cachedIndex) != -1 )))
+#end
+		{
+			idx = lookup(key);
+		}
+
 		if (idx == -1)
 		{
 			return false;
 		} else {
+#if !no_map_cache
+			if (cachedKey == key)
+				cachedIndex = -1;
+#end
+
 			hashes[idx] = FLAG_DEL;
 			_keys[idx] = null;
 			vals[idx] = null;
@@ -305,9 +372,10 @@ import cs.NativeArray;
 		Returns an iterator of all keys in the hashtable.
 		Implementation detail: Do not set() any new value while iterating, as it may cause a resize, which will break iteration
 	**/
-	public function keys() : Iterator<K> {
-    return new ObjectMapKeyIterator(this);
-  }
+	public function keys() : Iterator<K>
+	{
+		return new ObjectMapKeyIterator(this);
+	}
 
 	/**
 		Returns an iterator of all values in the hashtable.
@@ -315,26 +383,7 @@ import cs.NativeArray;
 	**/
 	public function iterator() : Iterator<V>
 	{
-		var i = 0;
-		var len = nBuckets;
-		return {
-			hasNext: function() {
-				for (j in i...len)
-				{
-					if (!isEither(hashes[j]))
-					{
-						i = j;
-						return true;
-					}
-				}
-				return false;
-			},
-			next: function() {
-				var ret = vals[i];
-				i = i + 1;
-				return ret;
-			}
-		};
+		return new ObjectMapValueIterator(this);
 	}
 
 	/**
@@ -420,33 +469,74 @@ import cs.NativeArray;
 }
 
 @:access(haxe.ds.ObjectMap)
-private class ObjectMapKeyIterator<K:{},V> {
-  var i : Int;
-  var len : Int;
-  var map : ObjectMap<K,V>;
-  public inline function new(map:ObjectMap<K,V>) {
-    this.map = map;
-    this.i = 0;
-    this.len = map.nBuckets;
-  }
+@:final @:keep
+private class ObjectMapKeyIterator<T:{},V> {
+	var m:ObjectMap<T,V>;
+	var i:Int;
+	var len:Int;
 
-  public inline function hasNext() {
-    var ret = false;
-    for (j in i...len)
-    {
-      if (!ObjectMap.isEither(map.hashes[j]))
-      {
-        i = j;
-        ret = true;
-        break;
-      }
-    }
-    return ret;
-  }
+	public function new(m:ObjectMap<T,V>) {
+		this.i = 0;
+		this.m = m;
+		this.len = m.nBuckets;
+	}
 
-  public inline function next() {
-    return map._keys[i++];
-  }
+	public function hasNext():Bool {
+		for (j in i...len)
+		{
+			if (!ObjectMap.isEither(m.hashes[j]))
+			{
+				i = j;
+				return true;
+			}
+		}
+		return false;
+	}
+
+	public function next() : T {
+		var ret = m._keys[i];
+
+#if !no_map_cache
+		m.cachedIndex = i;
+		m.cachedKey = ret;
+#end
+
+		i = i + 1;
+		return ret;
+	}
+}
+
+@:access(haxe.ds.ObjectMap)
+@:final @:keep
+private class ObjectMapValueIterator<K:{},T> {
+	var m:ObjectMap<K,T>;
+	var i:Int;
+	var len:Int;
+
+	public function new(m:ObjectMap<K,T>)
+	{
+		this.i = 0;
+		this.m = m;
+		this.len = m.nBuckets;
+	}
+
+	public function hasNext() : Bool {
+		for (j in i...len)
+		{
+			if (!ObjectMap.isEither(m.hashes[j]))
+			{
+				i = j;
+				return true;
+			}
+		}
+		return false;
+	}
+
+	public inline function next():T {
+		var ret = m.vals[i];
+		i = i + 1;
+		return ret;
+	}
 }
 
 private typedef HashType = Int;

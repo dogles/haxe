@@ -26,9 +26,14 @@ class BytesInput extends Input {
 	#if !flash9
 	var pos : Int;
 	var len : Int;
+	var totlen : Int;
 	#end
-	
+
+	/** The current position in the stream in bytes. */
 	public var position(get,set) : Int;
+
+	/** The length of the stream in bytes. */
+	public var length(get,never) : Int;
 
 	public function new( b : Bytes, ?pos : Int, ?len : Int ) {
 		if( pos == null ) pos = 0;
@@ -48,10 +53,14 @@ class BytesInput extends Input {
 		this.b = b.getData();
 		this.pos = pos;
 		this.len = len;
+		this.totlen = len;
+		#end
+		#if python
+		bigEndian = false;
 		#end
 	}
-	
-	function get_position() : Int {
+
+	inline function get_position() : Int {
 		#if flash9
 		return b.position;
 		#else
@@ -59,14 +68,25 @@ class BytesInput extends Input {
 		#end
 	}
 
+	inline function get_length() : Int {
+		#if flash9
+		return b.length;
+		#else
+		return totlen;
+		#end
+	}
+
 	function set_position( p : Int ) : Int {
+		if( p < 0 ) p = 0;
+		else if( p > length ) p = length;
 		#if flash9
 		return b.position = p;
 		#else
+		len = totlen - p;
 		return pos = p;
 		#end
 	}
-	
+
 	public override function readByte() : Int {
 		#if flash9
 			return try b.readUnsignedByte() catch( e : Dynamic ) throw new Eof();

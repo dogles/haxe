@@ -30,14 +30,19 @@ module Meta = struct
 	type strict_meta =
 		| Abstract
 		| Access
+		| Accessor
 		| Allow
+		| Analyzer
 		| Annotation
 		| ArrayAccess
+		| Ast
 		| AutoBuild
 		| Bind
 		| Bitmap
+		| BridgeProperties
 		| Build
 		| BuildXml
+		| Callable
 		| Class
 		| ClassCode
 		| Commutative
@@ -46,24 +51,32 @@ module Meta = struct
 		| CoreType
 		| CppFileCode
 		| CppNamespaceCode
+		| CsNative
+		| Dce
 		| Debug
 		| Decl
 		| DefParam
+		| Delegate
 		| Depend
 		| Deprecated
 		| DynamicObject
 		| Enum
 		| EnumConstructorParam
+		| Event
+		| Exhaustive
 		| Expose
 		| Extern
 		| FakeEnum
 		| File
 		| Final
+		| FlatEnum
 		| Font
+		| Forward
 		| From
 		| FunctionCode
 		| FunctionTailCode
 		| Generic
+		| GenericBuild
 		| Getter
 		| Hack
 		| HaxeGeneric
@@ -73,19 +86,24 @@ module Meta = struct
 		| HxGen
 		| IfFeature
 		| Impl
+		| PythonImport
 		| Include
 		| InitPackage
 		| Internal
 		| IsVar
+		| JavaCanonical
 		| JavaNative
+		| JsRequire
 		| Keep
 		| KeepInit
 		| KeepSub
 		| Meta
 		| Macro
 		| MaybeUsed
+		| MergeBlock
 		| MultiType
 		| Native
+		| NativeChildren
 		| NativeGen
 		| NativeGeneric
 		| NoCompletion
@@ -101,13 +119,16 @@ module Meta = struct
 		| Optional
 		| Overload
 		| PrivateAccess
+		| Property
 		| Protected
 		| Public
 		| PublicFields
 		| ReadOnly
+		| ReallyUsed
 		| RealPath
 		| Remove
 		| Require
+		| RequiresAssign
 		| ReplaceReflection
 		| Rtti
 		| Runtime
@@ -117,20 +138,22 @@ module Meta = struct
 		| SkipReflection
 		| Sound
 		| Struct
-                | ClassHeader
-                | FieldHeader
+		| StructAccess
 		| SuppressWarnings
+		| This
 		| Throws
 		| To
 		| ToString
 		| Transient
 		| ValueUsed
 		| Volatile
+		| Unbound
 		| UnifyMinDynamic
 		| Unreflective
 		| Unsafe
 		| Usage
 		| Used
+		| Void
 		| Last
 		(* do not put any custom metadata after Last *)
 		| Dollar of string
@@ -138,6 +161,9 @@ module Meta = struct
 
 	let has m ml = List.exists (fun (m2,_,_) -> m = m2) ml
 	let get m ml = List.find (fun (m2,_,_) -> m = m2) ml
+
+	let to_string_ref = ref (fun _ -> assert false)
+	let to_string (m : strict_meta) : string = !to_string_ref m
 end
 
 type keyword =
@@ -272,7 +298,7 @@ and complex_type =
 	| CTFunction of complex_type list * complex_type
 	| CTAnonymous of class_field list
 	| CTParent of complex_type
-	| CTExtend of type_path * class_field list
+	| CTExtend of type_path list * class_field list
 	| CTOptional of complex_type
 
 and func = {
@@ -414,8 +440,8 @@ let is_lower_ident i =
 
 let pos = snd
 
-let is_postfix (e,_) = function
-	| Increment | Decrement -> (match e with EConst _ | EField _ | EArray _ -> true | _ -> false)
+let rec is_postfix (e,_) op = match op with
+	| Increment | Decrement -> true
 	| Not | Neg | NegBits -> false
 
 let is_prefix = function
@@ -448,7 +474,7 @@ let parse_path s =
 	| [] -> failwith "Invalid empty path"
 	| x :: l -> List.rev l, x
 
-let s_escape s =
+let s_escape ?(hex=true) s =
 	let b = Buffer.create (String.length s) in
 	for i = 0 to (String.length s) - 1 do
 		match s.[i] with
@@ -457,6 +483,7 @@ let s_escape s =
 		| '\r' -> Buffer.add_string b "\\r"
 		| '"' -> Buffer.add_string b "\\\""
 		| '\\' -> Buffer.add_string b "\\\\"
+		| c when int_of_char c < 32 && hex -> Buffer.add_string b (Printf.sprintf "\\x%.2X" (int_of_char c))
 		| c -> Buffer.add_char b c
 	done;
 	Buffer.contents b
@@ -602,16 +629,17 @@ let unescape s =
 					inext := !inext + 2;
 				| 'u' ->
 					let (u, a) =
-					  (try
-					      (int_of_string ("0x" ^ String.sub s (i+1) 4), 4)
-					    with
-					      _ -> try
-						assert (s.[i+1] = '{');
-						let l = String.index_from s (i+3) '}' - (i+2) in
-						let u = int_of_string ("0x" ^ String.sub s (i+2) l) in
-						assert (u <= 0x10FFFF);
-						(u, l+2)
-					      with _ -> raise Exit) in
+						try
+							(int_of_string ("0x" ^ String.sub s (i+1) 4), 4)
+						with _ -> try
+							assert (s.[i+1] = '{');
+							let l = String.index_from s (i+3) '}' - (i+2) in
+							let u = int_of_string ("0x" ^ String.sub s (i+2) l) in
+							assert (u <= 0x10FFFF);
+							(u, l+2)
+						with _ ->
+							raise Exit
+					in
 					let ub = UTF8.Buf.create 0 in
 					UTF8.Buf.add_char ub (UChar.uchar_of_int u);
 					Buffer.add_string b (UTF8.Buf.contents ub);
@@ -648,7 +676,7 @@ let map_expr loop (e,p) =
 		| CTFunction (cl,c) -> CTFunction (List.map ctype cl, ctype c)
 		| CTAnonymous fl -> CTAnonymous (List.map cfield fl)
 		| CTParent t -> CTParent (ctype t)
-		| CTExtend (t,fl) -> CTExtend (tpath t, List.map cfield fl)
+		| CTExtend (tl,fl) -> CTExtend (List.map tpath tl, List.map cfield fl)
 		| CTOptional t -> CTOptional (ctype t)
 	and tparamdecl t =
 		{ tp_name = t.tp_name; tp_constraints = List.map ctype t.tp_constraints; tp_params = List.map tparamdecl t.tp_params }
@@ -694,3 +722,12 @@ let map_expr loop (e,p) =
 	| EMeta (m,e) -> EMeta(m, loop e)
 	) in
 	(e,p)
+
+let rec s_expr (e,_) =
+	match e with
+	| EConst c -> s_constant c
+	| EParenthesis e -> "(" ^ (s_expr e) ^ ")"
+	| EArrayDecl el -> "[" ^ (String.concat "," (List.map s_expr el)) ^ "]"
+	| EObjectDecl fl -> "{" ^ (String.concat "," (List.map (fun (n,e) -> n ^ ":" ^ (s_expr e)) fl)) ^ "}"
+	| EBinop (op,e1,e2) -> s_expr e1 ^ s_binop op ^ s_expr e2
+	| _ -> "'???'"

@@ -39,11 +39,15 @@ class BytesBuffer {
 	var b : Array<Int>;
 	#end
 
+	/** The length of the buffer in bytes. **/
+	public var length(get,never) : Int;
+
 	public function new() {
 		#if neko
 		b = untyped StringBuf.__make();
 		#elseif flash9
 		b = new flash.utils.ByteArray();
+		b.endian = flash.utils.Endian.LITTLE_ENDIAN;
 		#elseif php
 		b = "";
 		#elseif cpp
@@ -57,6 +61,18 @@ class BytesBuffer {
 		#end
 	}
 
+	inline function get_length() : Int {
+		#if neko
+		return untyped __dollar__ssize( StringBuf.__to_string(b) );
+		#elseif cs
+		return haxe.Int64.toInt( b.Length );
+		#elseif java
+		return b.size();
+		#else
+		return b.length;
+		#end
+	}
+
 	public inline function addByte( byte : Int ) {
 		#if neko
 		untyped StringBuf.__add_char(b,byte);
@@ -67,7 +83,7 @@ class BytesBuffer {
 		#elseif cpp
 		b.push(untyped byte);
 		#elseif cs
-		b.WriteByte(byte);
+		b.WriteByte(cast byte);
 		#elseif java
 		b.write(byte);
 		#else
@@ -94,6 +110,40 @@ class BytesBuffer {
 		#end
 	}
 
+	public inline function addString( v : String ) {
+		#if neko
+		untyped StringBuf.__add(b, v.__s);
+		#elseif flash9
+		b.writeUTFBytes(v);
+		#else
+		add(Bytes.ofString(v));
+		#end
+	}
+
+	public inline function addFloat( v : Float ) {
+		#if neko
+		untyped StringBuf.__add(b, Output._float_bytes(v, false));
+		#elseif flash9
+		b.writeFloat(v);
+		#else
+		var b = new BytesOutput();
+		b.writeFloat(v);
+		add(b.getBytes());
+		#end
+	}
+	
+	public inline function addDouble( v : Float ) {
+		#if neko
+		untyped StringBuf.__add(b, Output._double_bytes(v, false));
+		#elseif flash9
+		b.writeDouble(v);
+		#else
+		var b = new BytesOutput();
+		b.writeDouble(v);
+		add(b.getBytes());
+		#end
+	}
+	
 	public inline function addBytes( src : Bytes, pos : Int, len : Int ) {
 		#if !neko
 		if( pos < 0 || len < 0 || pos + len > src.length ) throw Error.OutsideBounds;
@@ -101,7 +151,7 @@ class BytesBuffer {
 		#if neko
 		try untyped StringBuf.__add_sub(b,src.getData(),pos,len) catch( e : Dynamic ) throw Error.OutsideBounds;
 		#elseif flash9
-		b.writeBytes(src.getData(),pos,len);
+		if( len > 0 ) b.writeBytes(src.getData(),pos,len);
 		#elseif php
 		b += untyped __call__("substr", src.b, pos, len);
 		#elseif cs
@@ -134,6 +184,9 @@ class BytesBuffer {
 		var bytes = new Bytes(cast b.Length, buf);
 		#elseif java
 		var buf = b.toByteArray();
+		var bytes = new Bytes(buf.length, buf);
+		#elseif python
+		var buf = python.lib.Builtin.bytearray(b);
 		var bytes = new Bytes(buf.length, buf);
 		#else
 		var bytes = new Bytes(b.length,b);

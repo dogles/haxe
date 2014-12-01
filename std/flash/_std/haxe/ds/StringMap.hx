@@ -21,7 +21,7 @@
  */
 package haxe.ds;
 
-@:coreApi class StringMap<T> implements Map.IMap<String,T> {
+@:coreApi class StringMap<T> implements haxe.Constraints.IMap<String,T> {
 
 	private var h :flash.utils.Dictionary;
 
@@ -37,13 +37,13 @@ package haxe.ds;
 		return untyped h["$"+key];
 	}
 
-	public function exists( key : String ) : Bool {
-		return untyped h.hasOwnProperty("$"+key);
+	public inline function exists( key : String ) : Bool {
+		return untyped __in__("$"+key,h);
 	}
 
 	public function remove( key : String ) : Bool {
 		key = "$"+key;
-		if( untyped !h.hasOwnProperty(key) ) return false;
+		if( untyped !__in__(key,h) ) return false;
 		untyped __delete__(h,key);
 		return true;
 	}
